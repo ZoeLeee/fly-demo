@@ -63,11 +63,11 @@ const groud = new THREE.Mesh(geometry, material);
 groud.rotateX(Math.PI / 2);
 scene.add(groud);
 
-let gltf = await loader.loadAsync("/models/runway.glb");
+let gltf = await loader.loadAsync(BASE_URL + "/models/runway.glb");
 const runway = gltf.scene;
 // scene.add(runway)
 
-const labelGltf = await loader.loadAsync("/models/label.glb");
+const labelGltf = await loader.loadAsync(BASE_URL + "/models/label.glb");
 
 const label = labelGltf.scene;
 // scene.add(label)
@@ -81,7 +81,7 @@ labelMixer.addEventListener("finished", (evt) => {
   }
 });
 
-const markerGltf = await loader.loadAsync("/models/newModels/marker.glb");
+const markerGltf = await loader.loadAsync(BASE_URL + "/models/newModels/marker.glb");
 const marker = markerGltf.scene;
 const markerMixer = new THREE.AnimationMixer(marker);
 
@@ -107,7 +107,7 @@ markerMixer.addEventListener("finished", (evt) => {
 // scene.add(marker);
 // marker.visible = false;
 
-gltf = await loader.loadAsync("/models/newModels/plane.glb");
+gltf = await loader.loadAsync(BASE_URL + "/models/newModels/plane.glb");
 
 const plane = gltf.scene;
 // scene.add(plane)
