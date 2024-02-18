@@ -75,7 +75,6 @@ const labelMixer = new THREE.AnimationMixer(label);
 labelMixer.addEventListener("finished", (evt) => {
   const arr = promiseMap.get(labelMixer);
   if (arr) {
-    console.log('labelMixer: ', arr);
     arr.forEach((r) => r(true));
     arr.length = 0;
   }
@@ -121,7 +120,7 @@ const fontPromise = fontLoader
     cityTextMesh.name="text"
     textGeometry.center();
     cityTextMesh.rotation.set(-Math.PI / 2, 0, 0);
-    cityTextMesh.position.set(0, 0.18, 0);
+    cityTextMesh.position.set(0, 0.1, 0);
 
     return cityTextMesh;
   });
@@ -159,9 +158,13 @@ document.getElementById("startBTN")!.onclick = async (e) => {
     console.log('scene: ', scene);
   //add label
   scene.add(label);
+  const labelAnRoot=label.getObjectByName("Cube001") as THREE.Mesh
+  const text = await fontPromise;
+  labelAnRoot.add(text);
+ 
   const labelClips = labelGltf.animations;
   const clip = THREE.AnimationClip.findByName(labelClips, "Cube.001Action.002");
-  console.log('clip: ', clip);
+
   clip.duration = 0.5;
   const action = labelMixer.clipAction(clip);
   action.reset();
@@ -169,9 +172,6 @@ document.getElementById("startBTN")!.onclick = async (e) => {
   action.loop = THREE.LoopOnce;
   action.play();
   await waitAnimationEnd(labelMixer);
-
-  const text = await fontPromise;
-  label.add(text);
 
   //add marker
 
@@ -231,6 +231,7 @@ document.getElementById("startBTN")!.onclick = async (e) => {
   await Promise.all([waitAnimationEnd(labelMixer),waitAnimationEnd(markerMixer)])
   marker.visible=false
   scene.remove(label);
+  labelAnRoot.remove(text)
 
 };
 
