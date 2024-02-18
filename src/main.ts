@@ -71,6 +71,7 @@ const labelGltf = await loader.loadAsync("/models/label.glb");
 
 const label = labelGltf.scene;
 // scene.add(label)
+
 const labelMixer = new THREE.AnimationMixer(label);
 labelMixer.addEventListener("finished", (evt) => {
   const arr = promiseMap.get(labelMixer);
@@ -81,21 +82,30 @@ labelMixer.addEventListener("finished", (evt) => {
 });
 
 const markerGltf = await loader.loadAsync("/models/newModels/marker.glb");
-
 const marker = markerGltf.scene;
 const markerMixer = new THREE.AnimationMixer(marker);
+
+const hiddenMarkerAction = markerMixer.clipAction(markerGltf.animations[1]);
+hiddenMarkerAction.loop = THREE.LoopOnce;
+hiddenMarkerAction.clampWhenFinished = true
+
+const showMackerAction = markerMixer.clipAction(markerGltf.animations[0]);
+
+showMackerAction.loop = THREE.LoopOnce;
+
+showMackerAction.clampWhenFinished = true
+
 
 markerMixer.addEventListener("finished", (evt) => {
   const arr = promiseMap.get(markerMixer);
   if (arr) {
-    console.log('markerMixer: ', arr);
     arr.forEach((r) => r(true));
     arr.length = 0;
   }
 });
 
-scene.add(marker);
-marker.visible = false;
+// scene.add(marker);
+// marker.visible = false;
 
 gltf = await loader.loadAsync("/models/newModels/plane.glb");
 
@@ -117,7 +127,7 @@ const fontPromise = fontLoader
 
     const cityTextMesh = new THREE.Mesh(textGeometry, textMaterial);
 
-    cityTextMesh.name="text"
+    cityTextMesh.name = "text"
     textGeometry.center();
     cityTextMesh.rotation.set(-Math.PI / 2, 0, 0);
     cityTextMesh.position.set(0, 0.1, 0);
@@ -154,91 +164,66 @@ async function waitAnimationEnd(mixer: THREE.AnimationMixer) {
   });
 }
 
-document.getElementById("startBTN")!.onclick = async (e) => {
-    console.log('scene: ', scene);
+const btn = document.getElementById("startBTN")!
+
+btn.onclick = async (e) => {
+  btn.style.display = "none"
+  const text = await fontPromise;
+
   //add label
   scene.add(label);
-  const labelAnRoot=label.getObjectByName("Cube001") as THREE.Mesh
-  const text = await fontPromise;
-  labelAnRoot.add(text);
- 
+  const labelAnRoot = label.getObjectByName("Cube001") as THREE.Mesh
+
+
   const labelClips = labelGltf.animations;
   const clip = THREE.AnimationClip.findByName(labelClips, "Cube.001Action.002");
 
-  clip.duration = 0.5;
+  clip.duration = 0.3;
   const action = labelMixer.clipAction(clip);
-  action.reset();
   action.clampWhenFinished = true;
   action.loop = THREE.LoopOnce;
+  action.reset();
   action.play();
   await waitAnimationEnd(labelMixer);
 
+  labelAnRoot.add(text);
   //add marker
 
-  const markerClips = markerGltf.animations;
+  scene.add(marker)
+  marker.getObjectByName("Bone")?.scale.set(0, 0, 0)
+  marker.position.y = 0.12
 
-  const defaultMarkerClip = THREE.AnimationClip.findByName(
-    markerClips,
-    "marker_idle_scale_0"
-  );
-
-  const markerDefaultAction = markerMixer.clipAction(defaultMarkerClip);
-
-  markerDefaultAction.loop = THREE.LoopOnce;
-
-  //   markerDefaultAction.time=0.03
-  markerDefaultAction.reset()
-  markerDefaultAction.play();
-  markerDefaultAction.clampWhenFinished=true
-  await waitAnimationEnd(markerMixer)
-
-  marker.visible = true;
-
-  const showMarkerClip = THREE.AnimationClip.findByName(
-    markerClips,
-    "marker_appearing_animation"
-  );
-  const hiddenMarkerClip = THREE.AnimationClip.findByName(
-      markerClips,
-      "marker_disappearing_animation"
-      );
-
-  const showMackerAction = markerMixer.clipAction(showMarkerClip);
-
-  showMackerAction.loop = THREE.LoopOnce;
-
-  showMackerAction.clampWhenFinished=true
   showMackerAction.reset();
   showMackerAction.play();
 
   await waitAnimationEnd(markerMixer);
 
+  showMackerAction.stop()
 
-  console.log('hiddenMarkerClip: ', hiddenMarkerClip);
-  const hiddenMarkerAction = markerMixer.clipAction(hiddenMarkerClip);
-  hiddenMarkerAction.loop = THREE.LoopOnce;
-  hiddenMarkerAction.clampWhenFinished=true
+  action.reset();
+  clip.duration = 2.3;
+  action.time = 1.8;
+  action.play();
+
   hiddenMarkerAction.reset();
   hiddenMarkerAction.play();
-  
-  
-  clip.duration = 2.4;
-  action.reset();
-  action.time = 1.5;
-  action.play();
-  label.remove(text)
 
-  await Promise.all([waitAnimationEnd(labelMixer),waitAnimationEnd(markerMixer)])
-  marker.visible=false
-  scene.remove(label);
-  labelAnRoot.remove(text)
 
+  await Promise.all([
+    waitAnimationEnd(labelMixer).then(() => {
+      labelAnRoot.remove(text)
+      scene.remove(label);
+      action.stop()
+      return true
+    }),
+    waitAnimationEnd(markerMixer).then(() => {
+      scene.remove(marker);
+      hiddenMarkerAction.stop()
+      return true
+    })
+  ])
+
+  btn.style.display = "block"
 };
 
-function sleep(t: number) {
-  return new Promise((res) => {
-    setTimeout(() => {
-      res(true);
-    }, t);
-  });
-}
+
