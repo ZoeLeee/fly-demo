@@ -10,7 +10,7 @@ export default defineConfig({
   base: base,
   plugins: [react()],
   define: {
-    "BASE_URL": JSON.stringify(base)
+    "BASE_URL": JSON.stringify(isDev ? "" : base)
   },
   build: {
     target: ['edge90', 'chrome90', 'firefox90', 'safari15']

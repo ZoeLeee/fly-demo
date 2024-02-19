@@ -7,6 +7,7 @@ import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 const root = document.getElementById("root")!;
 
@@ -19,6 +20,10 @@ loader.setDRACOLoader(dracoLoader);
 const fontLoader = new FontLoader();
 
 const renderer = new THREE.WebGLRenderer();
+
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
 renderer.setSize(window.innerWidth, window.innerHeight);
 root.appendChild(renderer.domElement);
 
@@ -41,27 +46,60 @@ controls.update();
 
 const ambientLight = new AmbientLight(0xffffff);
 
+ambientLight.intensity = 0.5
+
 scene.add(ambientLight);
 
 scene.background = new THREE.Color("#ccc");
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer); // 使用hdr作为背景色
+pmremGenerator.compileEquirectangularShader();
+
+const direction = new THREE.DirectionalLight(0xffffff, 2);
+
+direction.position.set(0.3, 1.018, -2.7)
+
+scene.add(direction)
+
+direction.castShadow = true
+
+direction.shadow.autoUpdate = true
+
+direction.shadow.normalBias = 0
+direction.shadow.bias = 0.000055
+direction.shadow.radius = 40
+
+// scene.add(new THREE.DirectionalLightHelper(direction, 1))
+
 
 new RGBELoader()
   .setPath("./textures/")
   .load("table_mountain_1_puresky_2k.hdr", function (texture) {
     texture.mapping = EquirectangularReflectionMapping;
-    texture.flipY = false;
+    // texture.flipY = false;
+
+    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+
+    // scene.environment = envMap; // 给场景添加环境光效果
+    scene.background = envMap; // 给场景添加背景图
+
+    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+    pmremGenerator.dispose();
   });
 
 const promiseMap = new Map<THREE.AnimationMixer, ((v: any) => any)[]>();
 
-const geometry = new THREE.PlaneGeometry(5, 5);
+const geometry = new THREE.PlaneGeometry(50, 50);
 const material = new THREE.MeshBasicMaterial({
-  color: 0xfffff0,
-  side: THREE.DoubleSide,
+  color: 0xffffff,
+  // side: THREE.DoubleSide,
 });
 const groud = new THREE.Mesh(geometry, material);
-groud.rotateX(Math.PI / 2);
-scene.add(groud);
+groud.rotateX(-Math.PI / 2);
+groud.receiveShadow = true
+// scene.add(groud);
 
 let gltf = await loader.loadAsync(BASE_URL + "/models/runway.glb");
 const runway = gltf.scene;
@@ -70,6 +108,20 @@ const runway = gltf.scene;
 const labelGltf = await loader.loadAsync(BASE_URL + "/models/label.glb");
 
 const label = labelGltf.scene;
+
+label.receiveShadow = true
+
+
+label.traverse((child: any) => {
+  const material = child["material"];
+  if (material) {
+    // material.envMapIntensity = 1.5;
+    // material.color = new THREE.Color(0xd66b00);
+    // material.metalness = 0.2;
+    // material.roughness = 0.1;
+  }
+  (child as THREE.Mesh).receiveShadow = true
+});
 // scene.add(label)
 
 const labelMixer = new THREE.AnimationMixer(label);
@@ -95,7 +147,6 @@ showMackerAction.loop = THREE.LoopOnce;
 
 showMackerAction.clampWhenFinished = true
 
-
 markerMixer.addEventListener("finished", (evt) => {
   const arr = promiseMap.get(markerMixer);
   if (arr) {
@@ -104,8 +155,17 @@ markerMixer.addEventListener("finished", (evt) => {
   }
 });
 
+marker.castShadow = true
+
+marker.traverse((child: any) => {
+  if (child.geometry) {
+    (child as THREE.Mesh).castShadow = true;
+  }
+});
+
+marker.position.z = -0.3
+
 // scene.add(marker);
-// marker.visible = false;
 
 gltf = await loader.loadAsync(BASE_URL + "/models/newModels/plane.glb");
 
@@ -192,6 +252,7 @@ btn.onclick = async (e) => {
   scene.add(marker)
   marker.getObjectByName("Bone")?.scale.set(0, 0, 0)
   marker.position.y = 0.12
+
 
   showMackerAction.reset();
   showMackerAction.play();
